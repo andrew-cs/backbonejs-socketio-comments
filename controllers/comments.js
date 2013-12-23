@@ -39,13 +39,13 @@ var add = function(req, res, io) {
 		if (err) {
 			res.type('text/plain');
 			res.send(500, "Error saving the comment");
+		} else {
+			res.type('application/json');
+			res.send(200, comm);
+			
+			console.log('broadcasting add');
+			io.sockets.emit('/comments:create', comm);
 		}
-
-		res.type('application/json');
-		res.send(200, comm);
-
-		console.log('broadcasting add');
-		io.sockets.emit('/comments:create', comm);
 	});			
 };
 
