@@ -30,6 +30,18 @@ app.Comment = Backbone.Model.extend({
 		// event to handle the new model by adding dynamically generated
 		// parameters (e.g. the creation date)
 		this.on('add', this.addHandler, this);
+
+		_.bindAll(this, 'serverChange', 'serverDelete', 'modelCleanup');
+
+		/*!
+		 * if we are creating a new model to push to the server we don't want
+		 * to iobind as we only bind new models from the server. This is because
+		 * the server assigns the id.
+		 */
+		if (!this.noIoBind) {
+		  this.ioBind('update', this.serverChange, this);
+		  this.ioBind('delete', this.serverDelete, this);
+		}
 	},		
 
 	idAttribute: '_id',
@@ -87,8 +99,27 @@ app.Comment = Backbone.Model.extend({
 		this.set({
 			dislike: dislikeN
 		});
-	}
+	},
 
+	noIoBind: false,
+	socket:window.socket,
+	serverChange: function (data) {
+		// Useful to prevent loops when dealing with client-side updates (ie: forms).
+		data.fromServer = true;
+		this.set(data);
+	},
+	serverDelete: function (data) {
+		if (this.collection) {
+		  this.collection.remove(this);
+		} else {
+		  this.trigger('remove', this);
+		}
+		this.modelCleanup();
+	},
+	modelCleanup: function () {
+		this.ioUnbindAll();
+		return this;
+	}
 });
 
 // Comments collection
@@ -96,7 +127,23 @@ app.Comment = Backbone.Model.extend({
 app.Comments = Backbone.Collection.extend({
 	model: app.Comment,
 	// The url to call for any interaction with the server
-	url: '/comments'
+	url: '/comments',
+
+	socket:window.socket,
+	initialize: function () {
+		_.bindAll(this, 'serverCreate');
+		this.ioBind('create', this.serverCreate, this);
+	},
+	serverCreate: function (data) {
+		// make sure no duplicates, just in case
+		var exists = this.get(data.id);
+			if (!exists) {
+			this.add(data);
+		} else {
+			data.fromServer = true;
+			exists.set(data);
+		}
+	},
 });
 
 // Add comment view
@@ -104,7 +151,7 @@ app.Comments = Backbone.Collection.extend({
 // We use an already existin
 app.AddCommentView = Backbone.View.extend({
 	initialize: function() {
-		
+
 	},
 
 	// Bind events to view methods
@@ -171,6 +218,7 @@ app.CommentView = Backbone.View.extend({
 		// Register to any changes of the model
 		// and re-render itself every time automatically
 		this.model.on('change', this.render, this);
+		this.model.on('remove', this.remove, this);
 	},
 
 	render: function() {		
@@ -287,6 +335,8 @@ app.AppView = Backbone.View.extend({
 
 // Self invoking function that starts the app
 (function() {
+    window.socket = io.connect('http://localhost');
+
 	// Create the collection
 	app.comments = new app.Comments();	
 

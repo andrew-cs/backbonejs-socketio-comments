@@ -27,7 +27,7 @@ var getOne = function(req, res) {
 };
 
 // Adds a comment
-var add = function(req, res) {					
+var add = function(req, res, io) {					
   	var comment = new CommentsModel.Comment({
   		text: req.body.text,
   		like: 0,
@@ -43,11 +43,14 @@ var add = function(req, res) {
 
 		res.type('application/json');
 		res.send(200, comm);
+
+		console.log('broadcasting add');
+		io.sockets.emit('/comments:create', comm);
 	});			
 };
 
 // Updates a single comment
-var update = function(req, res) {
+var update = function(req, res, io) {
 	CommentsModel.Comment.findById(req.params.id, function (err, comment) {
 		if (err) {
 			console.log('Error searching the comment...');
@@ -66,22 +69,30 @@ var update = function(req, res) {
 
 			res.type('application/json');
 			res.send(200, comm);
+
+			console.log('broadcasting update');
+			io.sockets.emit('/comments/' + req.params.id + ':update', comm);
 		});				
 	});
 
 };
 
 // Deletes a single comment
-var del = function(req, res) {	
+var del = function(req, res, io) {	
 	CommentsModel.Comment.findById(req.params.id, function(err, comment) {
-		comment.remove(function(err, comm) {
-			if (err) {
-				res.type('text/plain');
-				res.send(500, "Error removing the comment");
-			}
-			res.type('application/json');
-			res.send(200, "");
-		});
+		if (comment) {
+			comment.remove(function(err, comm) {
+				if (err) {
+					res.type('text/plain');
+					res.send(500, "Error removing the comment");
+				}
+				res.type('application/json');
+				res.send(200, "");
+
+				console.log('broadcasting delete');
+				io.sockets.emit('/comments/' + req.params.id + ':delete', comment);
+			});			
+		}
 	});	
 };
 
