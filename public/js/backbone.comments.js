@@ -335,7 +335,9 @@ app.AppView = Backbone.View.extend({
 
 // Self invoking function that starts the app
 (function() {
-    window.socket = io.connect('http://localhost');
+	var socketLoc = 'http://' + window.location.host;
+	console.log('connecting to socket at: ' + socketLoc)
+    window.socket = io.connect(socketLoc);
 
 	// Create the collection
 	app.comments = new app.Comments();	
