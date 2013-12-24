@@ -65,13 +65,13 @@ var update = function(req, res, io) {
 			if (err) {
 				res.type('text/plain');
 				res.send(500, "Error saving the comment");
+			} else {
+				res.type('application/json');
+				res.send(200, comm);
+
+				console.log('broadcasting update');
+				io.sockets.emit('/comments/' + req.params.id + ':update', comm);
 			}
-
-			res.type('application/json');
-			res.send(200, comm);
-
-			console.log('broadcasting update');
-			io.sockets.emit('/comments/' + req.params.id + ':update', comm);
 		});				
 	});
 
@@ -85,12 +85,14 @@ var del = function(req, res, io) {
 				if (err) {
 					res.type('text/plain');
 					res.send(500, "Error removing the comment");
-				}
-				res.type('application/json');
-				res.send(200, "");
+				} else {
+					res.type('application/json');
+					res.send(200, "");
 
-				console.log('broadcasting delete');
-				io.sockets.emit('/comments/' + req.params.id + ':delete', comment);
+					console.log('broadcasting delete');
+					io.sockets.emit('/comments/' + req.params.id + ':delete', comment);
+					
+				}
 			});			
 		}
 	});	
